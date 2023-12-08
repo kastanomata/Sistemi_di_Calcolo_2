@@ -3,7 +3,7 @@
 #include <pthread.h>
 #include <errno.h>
 
-#define N 1000 // number of threads
+#define N 10 // number of threads
 #define M 10000 // number of iterations per thread
 #define V 1 // value added to the balance by each thread at each iteration
 
@@ -12,9 +12,11 @@ int n = N, m = M, v = V;
 
 void* thread_work(void *arg) {
 	int i;
+	int *ret = (int *)malloc(sizeof(int));
 	for (i = 0; i < m; i++)
-		shared_variable += v;
-	return NULL;
+		*ret += v;
+	printf("\t[Thread] This thread is returning %d\n", *ret);
+	return ret;
 }
 
 int main(int argc, char **argv)
@@ -34,16 +36,21 @@ int main(int argc, char **argv)
 		}
 	printf("ok\n");
 
-	printf("Waiting for the termination of all the %d threads...", n); fflush(stdout);
-	for (i = 0; i < n; i++)
-		pthread_join(threads[i], NULL);
+	printf("Waiting for the termination of all the %d threads...\n", n); fflush(stdout);
+	for (i = 0; i < n; i++) {
+		int *result = malloc(sizeof(int));
+		pthread_join(threads[i], (void *)&result);
+		printf("Result of the %dith thread= %d\n",i,*result);
+		shared_variable += *result;
+	}
+
 	printf("ok\n");
 
 	unsigned long int expected_value = (unsigned long int)n*m*v;
-	printf("The value of the shared variable is %lu. It should have been %lu\n", shared_variable, expected_value);
-	if (expected_value > shared_variable) {
-		unsigned long int lost_adds = (expected_value - shared_variable) / v;
-		printf("Number of lost adds: %lu\n", lost_adds);
+	printf("Value of the shared variable: %lu. Expected result: %lu\n", shared_variable, expected_value);
+	if (expected_value != shared_variable) {
+		unsigned long int difference = (expected_value - shared_variable) / v;
+		printf("Number of lost adds: %lu\n", abs(difference));
 	}
 
     free(threads);
