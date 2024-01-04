@@ -9,8 +9,6 @@
 #include <time.h>
 #include <unistd.h>
 
-#include <assert.h>
-
 #define LOG_INTERVAL        1
 #define NUM_RESOURCES       3
 #define SEMAPHORE_NAME      "/simple_scheduler"
@@ -31,9 +29,6 @@ void cleanup() {
     /**
      * TODO: EDIT AND IMPLEMENT THE OPERATION DESCRIBED ABOVE
      **/
-
-    assert(sem_close(named_semaphore) != -1);
-    assert(sem_unlink(SEMAPHORE_NAME) != -1);
 
     exit(0);
 }
@@ -64,8 +59,6 @@ int main(int argc, char* argv[]) {
     sem_unlink(SEMAPHORE_NAME);
     named_semaphore = NULL;
 
-    named_semaphore = sem_open(SEMAPHORE_NAME, O_CREAT | O_EXCL, 0600, NUM_RESOURCES);
-    
     if (named_semaphore == SEM_FAILED) {
         handle_error("Could not open the named semaphore");
     }

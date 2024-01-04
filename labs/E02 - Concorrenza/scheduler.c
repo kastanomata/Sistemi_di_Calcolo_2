@@ -3,7 +3,7 @@
 #include <semaphore.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>     // strerror() formats errno into a human-readable string
+#include <string.h>     // perror() formats errno into a human-readable string
 #include <unistd.h>     // sleep()
 
 /* Some constants */
@@ -12,6 +12,9 @@
 #define NUM_RESOURCES   3   // number of available special resources
 #define NUM_TASKS       3   // we define the number of work items per thread
 #define THREAD_BURST    5   // determines how many threads are spawned at the same time
+
+
+
 
 /* We use a simple structure to encapsulate a thread's arguments */
 typedef struct thread_args_s {
@@ -31,10 +34,21 @@ void* client(void* arg_ptr) {
     printf("[@Thread%d] Resource acquired...\n", args->ID);
 
     /*** Process the work items assigned to the thread ***/
+    ret = sem_wait(args->semaphore);
+        if(ret == -1) {
+            perror("");
+            pthread_cancel(EXIT_FAILURE);
+        }
     for (i = 0; i < args->num_tasks; ++i) {
         // we simulate a work item by sleeping for 0 up to MAX_SLEEP seconds
-        sleep(rand() % (MAX_SLEEP+1));
+        // sleep(rand() % (MAX_SLEEP+1));
+        sleep(MAX_SLEEP/2);
     }
+    ret = sem_post(args->semaphore);
+        if(ret == -1) {
+            perror("");
+            pthread_cancel(EXIT_FAILURE);
+        }
 
 
     printf("[@Thread%d] Done. Resource released!\n", args->ID);
@@ -50,8 +64,13 @@ int main(int argc, char* argv[]) {
 
     int ret = 0;
     int thread_ID = 0;
+    sem_t *semaphore = malloc(sizeof(sem_t));
 
-    sem_t* semaphore = malloc(sizeof(sem_t)); // we allocate a sem_t object on the heap
+    ret = sem_init(semaphore, 0, NUM_RESOURCES);
+    if(ret == -1) {
+        perror("");
+        exit(EXIT_FAILURE);
+    }
 
 
     /* Main loop */
@@ -79,7 +98,8 @@ int main(int argc, char* argv[]) {
             args->num_tasks = NUM_TASKS;
 
             if (pthread_create(&thread_handle, NULL, client, args)) {
-                printf("==> [DRIVER] FATAL ERROR: cannot create thread %d: %s\nExiting...\n", thread_ID, strerror(errno));
+                printf("==> [DRIVER] FATAL ERROR: cannot create thread %d\nExiting...\n", thread_ID);
+                perror("");
                 exit(1);
             }
 

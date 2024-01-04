@@ -27,15 +27,12 @@ void initSemaphores() {
     /* TODO: create the semaphores as described above */
 
     sem_filled = NULL;
-    sem_filled = sem_open(SEMNAME_FILLED, O_CREAT | O_EXCL, 0600, 0);
     if (sem_filled == SEM_FAILED) handle_error("sem_open filled");
 
     sem_empty = NULL;
-    sem_empty = sem_open(SEMNAME_EMPTY, O_CREAT | O_EXCL, 0600, BUFFER_SIZE);
     if (sem_empty == SEM_FAILED) handle_error("sem_open empty");
 
     sem_cs = NULL;
-    sem_cs = sem_open(SEMNAME_CS, O_CREAT | O_EXCL, 0600, 1);
     if (sem_cs == SEM_FAILED) handle_error("sem_open cs");
 }
 
@@ -46,9 +43,6 @@ void closeSemaphores() {
     /* TODO: implement the operations described above, and handle
      * possible errors using the predefined handle_error() macro */
 
-    if(sem_close(sem_filled)) handle_error("sem_close filled");
-    if(sem_close(sem_empty)) handle_error("sem_close empty");
-    if(sem_close(sem_cs)) handle_error("sem_close cs");
 
 }
 
@@ -72,8 +66,8 @@ void produce(int id, int numOps) {
 
         /* TODO: implement the operations described above, and handle
          * possible errors using the predefined handle_error() macro */
-        if(sem_wait(sem_empty)) handle_error("sem_wait empty");
-        if(sem_wait(sem_cs)) handle_error("sem_wait cs");
+
+
         // CRITICAL SECTION
         int value = performRandomTransaction();
         writeToBufferFile(value, BUFFER_SIZE, BUFFER_FILENAME);
@@ -85,9 +79,8 @@ void produce(int id, int numOps) {
 
         /* TODO: implement the operations described above, and handle
          * possible errors using the predefined handle_error() macro */
-        if(sem_post(sem_cs)) handle_error("sem_post cs");
-        if(sem_post(sem_filled)) handle_error("sem_post filled");
-        
+
+
         numOps--;
     }
     printf("Producer %d ended. Local sum is %d\n", id, localSum);

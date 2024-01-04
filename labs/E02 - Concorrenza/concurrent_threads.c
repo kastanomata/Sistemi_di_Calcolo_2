@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <semaphore.h>
 #include <pthread.h>
 #include <errno.h>
 
@@ -10,15 +11,32 @@
 unsigned long int shared_variable;
 int n = N, m = M, v = V;
 
+sem_t *semaphore;
+
 void* thread_work(void *arg) {
 	int i;
-	for (i = 0; i < m; i++)
-		shared_variable += v;
+	for (i = 0; i < m; i++) {
+		if(sem_wait(semaphore) == -1) {
+			perror("Error in sem_wait()");
+			exit(EXIT_FAILURE);	
+		}
+		// CS
+		shared_variable += v; 
+		if(sem_post(semaphore) == -1) {
+			perror("Error in sem_post()");
+			exit(EXIT_FAILURE);	
+		}
+	}
 	return NULL;
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
+	semaphore = (sem_t *) malloc(sizeof(sem_t));
+	if(sem_init(semaphore, 0, 1) == -1) {
+		perror("Error while initializing &semaphore");
+		exit(EXIT_FAILURE);	
+	}
+		
 	if (argc > 1) n = atoi(argv[1]);
 	if (argc > 2) m = atoi(argv[2]);
 	if (argc > 3) v = atoi(argv[3]);
@@ -46,6 +64,12 @@ int main(int argc, char **argv)
 		printf("Number of lost adds: %lu\n", lost_adds);
 	}
 
+
+	if(sem_destroy(semaphore) == -1) {
+		perror("Error while destroying &semaphore");
+		exit(EXIT_FAILURE);
+	}
+	free(semaphore);
     free(threads);
 
 	return EXIT_SUCCESS;

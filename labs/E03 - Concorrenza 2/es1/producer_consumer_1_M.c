@@ -4,12 +4,13 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <time.h>       // nanosleep()
+
 #include "common.h"
 
 #define BUFFER_SIZE         128
 #define INITIAL_DEPOSIT     0
 #define MAX_TRANSACTION     1000
-#define NUM_CONSUMERS       1
+#define NUM_CONSUMERS       10
 #define NUM_PRODUCERS       1
 #define PRNG_SEED           0
 
@@ -22,9 +23,6 @@
 #error "Choose NUM_CONSUMERS and NUM_PRODUCERS so that we get exactly NUM_OPERATIONS operations"
 #endif
 
-sem_t empty_sem, fill_sem;
-
-
 // struct used to specify arguments for a thread
 typedef struct {
     int threadId;
@@ -36,16 +34,21 @@ int transactions[BUFFER_SIZE];
 int deposit = INITIAL_DEPOSIT;
 int read_index, write_index;
 
+// semaphores
+sem_t empty_space_sem;
+sem_t full_buffer_sem;
+sem_t consumers_sem;
+
 // generates a number between -MAX_TRANSACTION and +MAX_TRANSACTION
 static inline int performRandomTransaction() {
     struct timespec pause = {0};
     pause.tv_nsec = 10000000; // 10 ms (100*10^6 ns)
     nanosleep(&pause, NULL);
-    
+    //return 1; /** This permits to easily check the correctnes of the exercize **/ 
     int amount = rand() % (2 * MAX_TRANSACTION); // {0, ..., 2*MAX_TRANSACTION - 1}
     if (amount >= MAX_TRANSACTION) {
         return MAX_TRANSACTION - (amount+1); // {-MAX_TRANSACTION, ..., -1}
-    } else {
+    } else { 
         return amount + 1; // {1, ..., MAX_TRANSACTION}
     }
 }
@@ -54,26 +57,19 @@ static inline int performRandomTransaction() {
 void* performTransactions(void* x) {
     thread_args_t* args = (thread_args_t*)x;
     printf("Starting producer thread %d\n", args->threadId);
-
+    int ret;
     while (args->numOps > 0) {
         // produce the item
         int currentTransaction = performRandomTransaction();
-
-        // make sure there is space in the buffer
-        if (sem_wait(&empty_sem)) {
-            handle_error("Producer: sem_wait error empty sem");
-        }
-
+        // check for space
+        ret = sem_wait(&empty_space_sem);
+        if(ret == -1) handle_error("");
         // write the item and update write_index accordingly
         transactions[write_index] = currentTransaction;
         write_index = (write_index + 1) % BUFFER_SIZE;
-
-        // notify that a new element just became available
-        if (sem_post(&fill_sem)) {
-            handle_error("Producer: sem_post error fill sem");
-        }
-    
-
+        // signal item available
+        ret = sem_post(&full_buffer_sem);
+        if(ret == -1) handle_error("");
         args->numOps--;
     }
 
@@ -81,27 +77,26 @@ void* performTransactions(void* x) {
     pthread_exit(NULL);
 }
 
+// consumer thread
 void* processTransactions(void* x) {
     thread_args_t* args = (thread_args_t*)x;
     printf("Starting consumer thread %d\n", args->threadId);
-
+    int ret;
     while (args->numOps > 0) {
-        // make sure there is data to consume
-        if (sem_wait(&fill_sem)) {
-            handle_error("Consumer: sem_wait error fill sem");
-        }
-
+        // check for item
+        ret = sem_wait(&full_buffer_sem);
+        if(ret == -1) handle_error("");
+        ret = sem_wait(&consumers_sem);
+        if(ret == -1) handle_error("");
         // consume the item and update (shared) variable deposit
         deposit += transactions[read_index];
         read_index = (read_index + 1) % BUFFER_SIZE;
         if (read_index % 100 == 0)
 			printf("After the last 100 transactions balance is now %d.\n", deposit);
-
-        // notify that a free cell in the buffer just became available
-        if (sem_post(&empty_sem)) {
-            handle_error("Consumer: sem_post error empty sem");
-        }
-
+        ret = sem_post(&empty_space_sem);
+        if(ret == -1) handle_error("");
+        ret = sem_post(&consumers_sem);
+        if(ret == -1) handle_error("");
         args->numOps--;
         //printf("C %d\n", args->numOps);
     }
@@ -119,19 +114,20 @@ int main(int argc, char* argv[]) {
     read_index  = 0;
     write_index = 0;
 
-    // initialize semaphores
-    int ret;
-    ret = sem_init(&fill_sem, 0, 0);
-    if (ret) handle_error("init error fill sem");
-    if (sem_init(&empty_sem, 0, BUFFER_SIZE))  handle_error("init error empty sem");
-   
     // set seed for pseudo-random number generator: we use this to make
     // this code yield the same result across different runs, as long
     // as they are race-free and you make no mistakes :-)
-    srand(PRNG_SEED);
+    srand(PRNG_SEED); 
 
-    //int ret;
+    int ret;
     pthread_t producer[NUM_PRODUCERS], consumer[NUM_CONSUMERS];
+
+    ret = sem_init(&empty_space_sem, 0, BUFFER_SIZE);
+    if(ret == -1) handle_error("Error! while initializing semaphore");
+    ret = sem_init(&full_buffer_sem, 0, 0);
+    if(ret == -1) handle_error("Error! while initializing semaphore");
+    ret = sem_init(&consumers_sem, 0, 1);
+    if(ret == -1) handle_error("Error! while initializing semaphore");
 
     int i;
     for (i=0; i<NUM_PRODUCERS; ++i) {
@@ -140,7 +136,7 @@ int main(int argc, char* argv[]) {
         arg->numOps = OPS_PER_PRODUCER;
 
         ret = pthread_create(&producer[i], NULL, performTransactions, arg);
-        if (ret != 0)  handle_error_en(ret,"Error in pthread create (producer)");
+        if (ret != 0) { fprintf(stderr, "Error %d in pthread_create\n", ret); exit(EXIT_FAILURE); }
     }
 
     int j;
@@ -150,25 +146,27 @@ int main(int argc, char* argv[]) {
         arg->numOps = OPS_PER_CONSUMER;
 
         ret = pthread_create(&consumer[j], NULL, processTransactions, arg);
-        if (ret != 0) handle_error_en(ret,"Error in pthread create (consumer)");
+        if (ret != 0) { fprintf(stderr, "Error %d in pthread_create\n", ret); exit(EXIT_FAILURE); }
     }
 
     // join on threads
     for (i=0; i<NUM_PRODUCERS; ++i) {
         ret = pthread_join(producer[i], NULL);
-        if (ret != 0) handle_error_en(ret,"Error in pthread join (producer)");
+        if (ret != 0) { fprintf(stderr, "Error %d in pthread_join\n", ret); exit(EXIT_FAILURE); }
     }
 
     for (j=0; j<NUM_CONSUMERS; ++j) {
         ret = pthread_join(consumer[j], NULL);
-        if (ret != 0) handle_error_en(ret,"Error in pthread join (consumer)");
+        if (ret != 0) { fprintf(stderr, "Error %d in pthread_join\n", ret); exit(EXIT_FAILURE); }
     }
 
     printf("Final value for deposit: %d\n", deposit);
-
-    // destroy semaphores
-    if (sem_destroy(&fill_sem)) handle_error("Fill sem destroy error");
-    if (sem_destroy(&empty_sem)) handle_error("Empty sem destroy error");
-
+    // TODO: cleanup
+    ret = sem_destroy(&empty_space_sem);
+    if(ret == -1) handle_error("Error! while destroying semaphore");
+    ret = sem_destroy(&consumers_sem);
+    if(ret == -1) handle_error("Error! while destroying semaphore");
+    ret = sem_destroy(&full_buffer_sem);
+    if(ret == -1) handle_error("Error! while destroying semaphore");
     exit(EXIT_SUCCESS);
 }

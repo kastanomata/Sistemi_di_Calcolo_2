@@ -19,15 +19,12 @@ void openSemaphores() {
     /* TODO: open the semaphores as described above */
 
     sem_filled = NULL;
-    sem_filled = sem_open(SEMNAME_FILLED, 0);
     if (sem_filled == SEM_FAILED) handle_error("sem_open filled");
 
     sem_empty = NULL;
-    sem_empty = sem_open(SEMNAME_EMPTY, 0);
     if (sem_empty == SEM_FAILED) handle_error("sem_open empty");
 
     sem_cs = NULL;
-    sem_cs = sem_open(SEMNAME_CS, 0);
     if (sem_cs == SEM_FAILED) handle_error("sem_open cs");
 }
 
@@ -38,14 +35,9 @@ void closeAndDestroySemaphores() {
      * to close the three semaphores and also delete (unlink) them. */
 
     // TODO: first close them, handling errors using the handle_error() macro
-    if(sem_close(sem_filled)) handle_error("sem_close filled");
-    if(sem_close(sem_empty)) handle_error("sem_close empty");
-    if(sem_close(sem_cs)) handle_error("sem_close cs");
 
     // TODO: then unlink them, handling errors using the handle_error() macro
-    if(sem_unlink(SEMNAME_FILLED)) handle_error("sem_unlink filled");
-    if(sem_unlink(SEMNAME_EMPTY)) handle_error("sem_unlink empty");
-    if(sem_unlink(SEMNAME_CS)) handle_error("sem_unlink cs");
+
 
 }
 
@@ -62,8 +54,7 @@ void consume(int id, int numOps) {
 
         /* TODO: implement the operations described above, and handle
          * possible errors using the predefined handle_error() macro */
-        if(sem_wait(sem_filled)) handle_error("sem_wait filled");
-        if(sem_wait(sem_cs)) handle_error("sem_wait cs");
+
         // CRITICAL SECTION
         int value = readFromBufferFile(BUFFER_SIZE, BUFFER_FILENAME);
         localSum += value;
@@ -75,8 +66,7 @@ void consume(int id, int numOps) {
         /* TODO: implement the operations described above, and handle
          * possible errors using the predefined handle_error() macro */
 
-        if(sem_post(sem_cs)) handle_error("sem_post cs");
-        if(sem_post(sem_empty)) handle_error("sem_post empty");
+
         numOps--;
     }
     printf("Consumer %d ended. Local sum is %d\n", id, localSum);
