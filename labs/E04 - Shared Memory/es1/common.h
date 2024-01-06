@@ -14,7 +14,7 @@
 
 #define SHM_NAME "/shmem-example"
 
-#define NUM 3
+#define NUM 10
 
 #define SIZE (NUM * sizeof(int))
 

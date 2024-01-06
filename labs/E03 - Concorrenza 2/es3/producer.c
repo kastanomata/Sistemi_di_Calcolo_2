@@ -16,34 +16,42 @@ void initSemaphores() {
     sem_unlink(SEMNAME_EMPTY);
     sem_unlink(SEMNAME_CS);
 
-    /* We create three named semaphores:
-    * - sem_filled to check that our buffer is not empty
-    *   (we need to initialize it to 0)
-    * - sem_empty to check that our buffer is not full
-    *   (we need to initialize it to the buffer's capacity BUFFER_SIZE)
-    * - sem_cs to enforce mutual exclusion when accessing the file
-    */
-
-    /* TODO: create the semaphores as described above */
-
+    /** 
+     * TODO: create the semaphores
+     * We create three named semaphores:
+     * - sem_filled to check that our buffer is not empty
+     *   (we need to initialize it to 0)
+     * - sem_empty to check that our buffer is not full
+     *   (we need to initialize it to the buffer's capacity BUFFER_SIZE)
+     * - sem_cs to enforce mutual exclusion when accessing the file
+     **/
     sem_filled = NULL;
+    sem_filled = sem_open(SEMNAME_FILLED, O_CREAT | O_EXCL, 0600, 0);
     if (sem_filled == SEM_FAILED) handle_error("sem_open filled");
 
     sem_empty = NULL;
+    sem_empty = sem_open(SEMNAME_EMPTY, O_CREAT | O_EXCL, 0600, BUFFER_SIZE);
     if (sem_empty == SEM_FAILED) handle_error("sem_open empty");
 
     sem_cs = NULL;
+    sem_cs = sem_open(SEMNAME_CS, O_CREAT | O_EXCL, 0600, 1);
     if (sem_cs == SEM_FAILED) handle_error("sem_open cs");
 }
 
 void closeSemaphores() {
-    /* When the program that controls the producer(s) terminates, we
-     * need to close all the the semaphores we previously opened */
-
-    /* TODO: implement the operations described above, and handle
-     * possible errors using the predefined handle_error() macro */
-
-
+    int ret;
+    /**
+     * TODO: When the program that controls the producer(s) terminates, we
+     * need to close all the the semaphores we previously opened, and handle
+     * possible errors using the predefined handle_error() macro 
+     * sem_t *sem_filled, *sem_empty, *sem_cs;
+     **/
+    ret = sem_close(sem_filled);
+    if(ret == -1) handle_error("");
+    ret = sem_close(sem_empty);
+    if(ret == -1) handle_error("");
+    ret = sem_close(sem_cs);
+    if(ret == -1) handle_error("");
 }
 
 static inline int performRandomTransaction() {
@@ -56,31 +64,32 @@ static inline int performRandomTransaction() {
 }
 
 void produce(int id, int numOps) {
+    int ret;
     int localSum = 0;
     while (numOps > 0) {
-
-        /* Before adding an element to the buffer, we have to check that
+        /** TODO: Before adding an element to the buffer, we have to check that
          * it is not full by using the semaphore sem_empty.
          * We need also to access to the critical section by enforcing
-         * mutual esclusion, which can be achieved using sem_cs. */
-
-        /* TODO: implement the operations described above, and handle
-         * possible errors using the predefined handle_error() macro */
-
-
+         * mutual esclusion, which can be achieved using sem_cs.
+         * Handle possible errors using the predefined handle_error() macro 
+         **/
+        ret = sem_wait(sem_empty);
+        if(ret == -1) handle_error("");
+        ret = sem_wait(sem_cs);
+        if(ret == -1) handle_error("");
         // CRITICAL SECTION
         int value = performRandomTransaction();
         writeToBufferFile(value, BUFFER_SIZE, BUFFER_FILENAME);
         localSum += value;
-
-        /* On leaving the critical section we have to "release" the
+        /** TODO: On leaving the critical section we have to "release" the
          * shared resource via sem_cs, and notify the consumer(s) that
-         * a new element is available using the semaphore sem_filled. */
-
-        /* TODO: implement the operations described above, and handle
-         * possible errors using the predefined handle_error() macro */
-
-
+         * a new element is available using the semaphore sem_filled.
+         * Handle possible errors using the predefined handle_error() macro 
+         **/
+        ret = sem_post(sem_filled);
+        if(ret == -1) handle_error("");
+        ret = sem_post(sem_cs);
+        if(ret == -1) handle_error("");
         numOps--;
     }
     printf("Producer %d ended. Local sum is %d\n", id, localSum);

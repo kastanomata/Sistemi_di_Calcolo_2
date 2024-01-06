@@ -20,21 +20,15 @@ typedef struct thread_args_s {
 void* client(void *arg_ptr) {
     char errorStr[100];
     thread_args_t* args = (thread_args_t*) arg_ptr;
-
-    /** Open an existing named semaphore.
+    /**
+     * TODO: Open an existing named semaphore.
      *
      * For this operation, we can use the short version of sem_open
      * that takes only two parameters, namely the identifier for
      * the semaphore and the desired flags (0 in this scenario).
      **/
-
-    /**
-     * TODO: EDIT AND IMPLEMENT THE OPERATION DESCRIBED ABOVE
-     **/
-
-
     sem_t* my_named_semaphore = NULL;
-
+    my_named_semaphore = sem_open(SEMAPHORE_NAME, 0);
     if (my_named_semaphore == SEM_FAILED) {
         snprintf(errorStr, sizeof(errorStr), "Could not open the named semaphore from thread %d", args->ID);
         handle_error(errorStr);

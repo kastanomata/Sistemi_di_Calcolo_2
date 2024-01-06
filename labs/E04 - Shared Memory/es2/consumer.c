@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/wait.h>
+
 #include "common.h"
 
 // definizione struttura memoria
@@ -19,34 +20,26 @@ struct shared_memory {
     int write_index;
 };
 
-//definizione shared memory
+// definizione shared memory
 struct shared_memory *myshm_ptr;
 int fd_shm;
 
-//definizione semafori named
+// definizione semafori named
 sem_t *sem_empty, *sem_filled, *sem_cs;
 
 
 void openMemory() {
-    /** COMPLETE THE FOLLOWING CODE BLOCK
+    /** 
      *
      * Request shared memory to the kernel and map the shared memory in the shared_mem_ptr variable.
      **/
-    if((fd_shm = shm_open(SH_MEM_NAME, O_RDWR, 0666)) == -1)
-        handle_error("Error while opening shared memory\n");
-    if((myshm_ptr = mmap(0, sizeof(struct shared_memory), PROT_READ | PROT_WRITE, MAP_SHARED, fd_shm, 0)) == MAP_FAILED)
-        handle_error("Error while mapping t oshared memory\n");
 }
 
 void closeMemory() {
-    /** COMPLETE THE FOLLOWING CODE BLOCK
+    /** 
      *
      * unmap the shared memory and close its descriptor
      **/
-    if(munmap(myshm_ptr, sizeof(struct shared_memory)) == -1)
-        handle_error("Error while unmapping pointer to shared shared memory\n");
-    if(close(fd_shm) == -1)
-        handle_error("Error while closing shared memory\n");
 }
 
 
@@ -92,6 +85,7 @@ void closeAndDestroySemaphores() {
 }
 
 void consume(int id, int numOps) {
+    int value;
     int localSum = 0;
     while (numOps > 0) {
         int ret = sem_wait(sem_filled);
@@ -104,9 +98,7 @@ void consume(int id, int numOps) {
          * Complete the following code:
          * read value from buffer inside the shared memory and update the consumer position
          */
-        int value = myshm_ptr->buf[myshm_ptr->read_index];
-        myshm_ptr->read_index++;
-        if(myshm_ptr->read_index == BUFFER_SIZE) myshm_ptr->read_index = 0;
+
 
         ret = sem_post(sem_cs);
         if (ret) handle_error("sem_post cs");

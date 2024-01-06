@@ -33,13 +33,6 @@ void initMemory() {
      * struct shared_memory, and map the shared memory in the shared_mem_ptr variable.
      * Initialize the shared memory to 0.
      **/
-    if((fd_shm = shm_open(SH_MEM_NAME, O_CREAT | O_EXCL | O_RDWR, 0666)) == -1)
-        handle_error("Error while opening shared memory\n");
-    if(ftruncate(fd_shm, sizeof(struct shared_memory)) == -1)
-        handle_error("Error while truncating shared memory\n");
-    if((myshm_ptr = mmap(0, sizeof(struct shared_memory), PROT_READ | PROT_WRITE, MAP_SHARED, fd_shm, 0)) == MAP_FAILED)
-        handle_error("Error while mapping t oshared memory\n");
-    memset(myshm_ptr, 0, sizeof(struct shared_memory));
 
 }
 
@@ -48,14 +41,10 @@ void closeMemory() {
      *
      * unmap the shared memory, unlink the shared memory and close its descriptor
      **/
-    if(munmap(myshm_ptr, sizeof(struct shared_memory)) == -1)
-        handle_error("Error while unmapping pointer to shared shared memory\n");
-    if(close(fd_shm) == -1)
-        handle_error("Error while closing shared memory\n");
-    if(shm_unlink(SH_MEM_NAME) == -1)
-        handle_error("Error while unlinking shared memory\n");
 
 }
+
+
 
 void initSemaphores() {
     // delete state semaphores from a previous crash (if any)
@@ -115,9 +104,7 @@ void produce(int id, int numOps) {
          * Complete the following code:
          * write value in the buffer inside the shared memory and update the producer position
          */
-        myshm_ptr->buf[myshm_ptr->write_index] = value;
-        myshm_ptr->write_index++;
-        if(myshm_ptr->write_index == BUFFER_SIZE) myshm_ptr->write_index = 0;
+
 
         ret = sem_post(sem_cs);
         if (ret) handle_error("sem_post cs");

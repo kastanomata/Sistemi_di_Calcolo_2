@@ -48,6 +48,7 @@ static inline int performRandomTransaction() {
 
 // producer thread
 void* performTransactions(void* x) {
+    
     thread_args_t* args = (thread_args_t*)x;
     printf("Starting producer thread %d\n", args->threadId);
 

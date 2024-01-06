@@ -16,27 +16,17 @@
 // we use a global variable to store the pointer to the named semaphore
 sem_t* named_semaphore;
 
-void cleanup() {
-    printf("\rShutting down the server...\n");
-    /** Remove the named semaphore.
-     *
-     * After closing the semaphore, the server process is responsible
-     * for unlinking it: in fact, since it's the server that grants
-     * access to a shared resource, the named semaphore cannot remain
-     * in the system after the server terminates!
-     * **/
-
-    /**
-     * TODO: EDIT AND IMPLEMENT THE OPERATION DESCRIBED ABOVE
-     **/
-
-    exit(0);
-}
+void cleanup();
 
 int main(int argc, char* argv[]) {
     int ret;
 
-    /** Create a named semaphore to be shared with different processes.
+    // creation might fail if the named semaphore hasn't been deleted since its last creation
+    // first we have to unlink it
+    sem_unlink(SEMAPHORE_NAME);
+    named_semaphore = NULL;
+    /** 
+     * TODO: Create a named semaphore to be shared with different processes.
      *
      * O_CREAT tells the system to create the semaphore named SEMAPHORE_NAMED
      * if it does not already exist. When used in an OR combination with
@@ -46,19 +36,10 @@ int main(int argc, char* argv[]) {
      * the semaphore can access it, with read & write (4+2) permissions.
      *
      * We initialize the semaphore with a value equal to NUM_RESOURCES.
+     * @returns:
+     * @param:
      **/
-
-    
-    
-    /**
-     * TODO: EDIT AND IMPLEMENT THE OPERATION DESCRIBED ABOVE
-     **/
-    
-    // creation might fail if the named semaphore hasn't been deleted since its last creation
-    // first we have to unlink it
-    sem_unlink(SEMAPHORE_NAME);
-    named_semaphore = NULL;
-
+    named_semaphore = sem_open(SEMAPHORE_NAME, O_CREAT | O_EXCL, 0600, NUM_RESOURCES);   
     if (named_semaphore == SEM_FAILED) {
         handle_error("Could not open the named semaphore");
     }
@@ -95,7 +76,25 @@ int main(int argc, char* argv[]) {
         sleep(LOG_INTERVAL);
     }
 
-    /*** We will never reach this point since we want to exit the program through CTRL+C only! ***/
+    // We will never reach this point since we want to exit the program through CTRL+C only!
 
     return 0;
+}
+
+void cleanup() {
+    printf("\rShutting down the server...\n");
+    /**
+     * TODO: Remove the named semaphore.
+     *
+     * After closing the semaphore, the server process is responsible
+     * for unlinking it: in fact, since it's the server that grants
+     * access to a shared resource, the named semaphore cannot remain
+     * in the system after the server terminates!
+     **/
+    int ret = sem_close(named_semaphore);
+    if(ret == -1) handle_error("");
+    ret = sem_unlink(SEMAPHORE_NAME);
+    if(ret == -1) handle_error("");
+
+    exit(0);
 }
