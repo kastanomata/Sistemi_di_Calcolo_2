@@ -161,8 +161,7 @@ int main(int argc, char* argv[]) {
     }
 
     printf("Final value for deposit: %d\n", deposit);
-    // DONE: cleanup 
-    // :
+    // TODO: cleanup
     ret = sem_destroy(&empty_space_sem);
     if(ret == -1) handle_error("Error! while destroying semaphore");
     ret = sem_destroy(&consumers_sem);

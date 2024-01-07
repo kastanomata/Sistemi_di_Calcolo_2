@@ -13,39 +13,38 @@
 #include "common.h"
 
 // definizione struttura memoria
-typedef struct shared_memory {
+struct shared_memory {
     int buf [BUFFER_SIZE];
     int read_index;
     int write_index;
-} buffer_t;
+};
 
 //definizione shared memory
-buffer_t *myshm_ptr;
+struct shared_memory *myshm_ptr;
 int fd_shm;
 
 //definizione semafori named
 sem_t *sem_empty, *sem_filled, *sem_cs;
 
 void initMemory() {
-    /** 
-     * TODO: 
-     * -> Request the kernel to creare a shared memory, 
-     * -> set its size to the size of struct shared_memory, 
-     * -> and map the shared memory in the shared_mem_ptr variable.
-     * -> Initialize the shared memory to 0.
+    /** COMPLETE THE FOLLOWING CODE BLOCK
+     *
+     * Request the kernel to creare a shared memory, set its size to the size of
+     * struct shared_memory, and map the shared memory in the shared_mem_ptr variable.
+     * Initialize the shared memory to 0.
      **/
 
 }
 
 void closeMemory() {
-    /** 
-     * TODO: 
-     * -> unmap the shared memory, 
-     * -> unlink the shared memory and 
-     * -> close its descriptor
+    /** COMPLETE THE FOLLOWING CODE BLOCK
+     *
+     * unmap the shared memory, unlink the shared memory and close its descriptor
      **/
 
 }
+
+
 
 void initSemaphores() {
     // delete state semaphores from a previous crash (if any)
@@ -102,8 +101,10 @@ void produce(int id, int numOps) {
         if (ret) handle_error("sem_wait cs");
 
         /**
-         * TODO: write value in the buffer inside the shared memory and update the producer position
+         * Complete the following code:
+         * write value in the buffer inside the shared memory and update the producer position
          */
+
 
         ret = sem_post(sem_cs);
         if (ret) handle_error("sem_post cs");
@@ -128,7 +129,7 @@ int main(int argc, char** argv) {
         if (pid == -1) {
             handle_error("fork");
         } else if (pid == 0) {
-            produce(i, OPS_PER_PRODUCER); 
+            produce(i, OPS_PER_PRODUCER);
             _exit(EXIT_SUCCESS);
         }
     }
