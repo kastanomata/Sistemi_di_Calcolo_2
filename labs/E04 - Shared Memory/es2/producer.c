@@ -27,20 +27,36 @@ int fd_shm;
 sem_t *sem_empty, *sem_filled, *sem_cs;
 
 void initMemory() {
-    /** COMPLETE THE FOLLOWING CODE BLOCK
-     *
+    /** 
+     * TODO:
      * Request the kernel to creare a shared memory, set its size to the size of
      * struct shared_memory, and map the shared memory in the shared_mem_ptr variable.
      * Initialize the shared memory to 0.
      **/
+    fd_shm = shm_open(SH_MEM_NAME, O_CREAT | O_EXCL | O_RDWR, 0666);
+    if(fd_shm == -1) handle_error("Error while creating shared memory");
+    int ret = ftruncate(fd_shm, sizeof(struct shared_memory));
+    if(ret == -1) handle_error("Error while truncating shared memory");
+    myshm_ptr = mmap(NULL, sizeof(struct shared_memory), PROT_READ | PROT_WRITE, MAP_SHARED, fd_shm, 0);
+    if(myshm_ptr == MAP_FAILED) handle_error("Error while mapping shared memory");
+    memset(myshm_ptr, 0, sizeof(myshm_ptr));
+    return;
 
 }
 
 void closeMemory() {
-    /** COMPLETE THE FOLLOWING CODE BLOCK
-     *
+   int ret;
+    /** 
+     * TODO: 
      * unmap the shared memory, unlink the shared memory and close its descriptor
      **/
+    ret = munmap(myshm_ptr, sizeof(struct shared_memory));
+    if(ret == -1) handle_error("Error while unmapping shared memory");
+    ret = close(fd_shm);
+    if(ret == -1) handle_error("Error while closing shared memory");
+    ret = shm_unlink(SH_MEM_NAME);
+    if(ret == -1) handle_error("Error while unlinking shared memory");
+    return;
 
 }
 
@@ -101,10 +117,13 @@ void produce(int id, int numOps) {
         if (ret) handle_error("sem_wait cs");
 
         /**
-         * Complete the following code:
+         * TODO:
          * write value in the buffer inside the shared memory and update the producer position
          */
-
+        myshm_ptr->buf[myshm_ptr->write_index] = value;
+        myshm_ptr->write_index++;
+        if (myshm_ptr->write_index == BUFFER_SIZE)
+            myshm_ptr->write_index = 0;
 
         ret = sem_post(sem_cs);
         if (ret) handle_error("sem_post cs");
