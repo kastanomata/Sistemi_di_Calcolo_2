@@ -16,10 +16,10 @@ static inline void performCopyBetweenDescriptors(int src_fd, int dest_fd, int bl
     while (1) {
         int read_bytes = 0; // index for writing into the buffer
         int bytes_left = block_size; // number of bytes to (possibly) read
-        int i;
+
         while (bytes_left > 0) {
-            /** [SOLUTION]
-             *
+            /** 
+             * SOLUTION:
              * Suggestion: when there are no more data to read, read()
              * will return 0; insert a break and exit the loop!
              *
@@ -32,14 +32,17 @@ static inline void performCopyBetweenDescriptors(int src_fd, int dest_fd, int bl
              *    you have to read N-X bytes in the next iteration
              *
              * In a correct solution you have to deal explicitly with
-             * the two cases described above. */
-            i = read(src_fd, buf + read_bytes, block_size);
-            if(i == 0) break;
-            else if(i == -1 && errno == EINTR) continue;
-            else if(i == -1) handle_error("Error! during read");
-
-            read_bytes += i;
-            bytes_left -= i;
+             * the two cases described above.
+             **/
+            int ret;
+            ret = read(src_fd, buf + read_bytes, bytes_left);
+            if(ret == 0) break;
+            if(ret == -1) {
+                if(errno == EINTR) continue;
+                handle_error("Error while reading file");
+            }
+            bytes_left -= ret;
+            read_bytes += ret;
         }
 
         // no more bytes left to write!
@@ -49,8 +52,8 @@ static inline void performCopyBetweenDescriptors(int src_fd, int dest_fd, int bl
         bytes_left = read_bytes; // number of bytes to write
 
         while (bytes_left > 0) {
-            /** [SOLUTION]
-             *
+            /** 
+             * SOLUTION:
              * Suggestion: in the write() case you won't have to check
              * if the return value is 0 as you did for the read()
              *
@@ -64,13 +67,15 @@ static inline void performCopyBetweenDescriptors(int src_fd, int dest_fd, int bl
              *
              * In a correct solution you have to deal explicitly with
              * the two cases described above. */
-            i = write(dest_fd, buf + written_bytes, block_size);
-            if(i == -1) handle_error("Error! while writing bytes");
-            else if(i == -1 && errno == EINTR) continue;
-            else if(i == -1) handle_error("Error! during read");
-            written_bytes += i;
-            bytes_left -= i;
-            
+            int ret;
+            ret = write(dest_fd, buf + written_bytes, bytes_left);
+            if(ret < bytes_left || (ret == -1 && errno == EINTR)) {
+                written_bytes += ret;
+                bytes_left -= ret;
+                continue;
+            } else if(ret == -1) {
+                handle_error("Error while writing destination file");
+            } 
         }
     }
 
