@@ -30,19 +30,26 @@ sem_t *sem_empty, *sem_filled, *sem_cs;
 
 void openMemory() {
     /** 
-     *
-     * Request shared memory to the kernel and map the shared memory in the shared_mem_ptr variable.
+     * TODO: Request shared memory to the kernel and map the shared memory in the shared_mem_ptr variable.
      **/
+    fd_shm = shm_open(SH_MEM_NAME, O_RDWR, 0666);
+    if(fd_shm == -1) handle_error("Error while opening shared memory");
+    myshm_ptr = mmap(NULL, sizeof(struct shared_memory), PROT_READ | PROT_WRITE, MAP_SHARED, fd_shm, 0);
+    if(myshm_ptr == MAP_FAILED) handle_error("Error while mapping shared memory");
+    return;
 }
 
 void closeMemory() {
+    int ret;
     /** 
-     *
-     * unmap the shared memory and close its descriptor
+     * TODO: unmap the shared memory and close its descriptor
      **/
+    ret = close(fd_shm);
+    if(ret == -1) handle_error("Error while closing shared memory");
+    ret = munmap(myshm_ptr, sizeof(struct shared_memory));
+    if(ret == -1) handle_error("Error while unmapping shared memory");
+    return;
 }
-
-
 
 void openSemaphores() {
     sem_filled = sem_open(SEMNAME_FILLED, 0);
@@ -95,10 +102,13 @@ void consume(int id, int numOps) {
         if (ret) handle_error("sem_wait cs");
 
         /**
-         * Complete the following code:
-         * read value from buffer inside the shared memory and update the consumer position
+         * TODO: read value from buffer inside the shared memory and update the consumer position
          */
-
+        value = myshm_ptr->buf[myshm_ptr->read_index];
+        myshm_ptr->buf[myshm_ptr->read_index] = 0;
+        myshm_ptr->read_index++;
+        if (myshm_ptr->read_index == BUFFER_SIZE)
+            myshm_ptr->read_index = 0;
 
         ret = sem_post(sem_cs);
         if (ret) handle_error("sem_post cs");
