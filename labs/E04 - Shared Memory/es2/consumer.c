@@ -33,6 +33,10 @@ void openMemory() {
      *
      * Request shared memory to the kernel and map the shared memory in the shared_mem_ptr variable.
      **/
+<<<<<<< HEAD
+
+=======
+>>>>>>> parent of 1b70686 (Shared Memory)
 }
 
 void closeMemory() {
@@ -40,6 +44,10 @@ void closeMemory() {
      *
      * unmap the shared memory and close its descriptor
      **/
+<<<<<<< HEAD
+    
+=======
+>>>>>>> parent of 1b70686 (Shared Memory)
 }
 
 
