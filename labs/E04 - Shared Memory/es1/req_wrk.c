@@ -18,7 +18,7 @@
 // data array
 int * data;
 /** 
- * TODO: Add any needed resource 
+ * DONE: Add any needed resource 
 **/
 int shm_fd;
 sem_t *sem_req;
@@ -27,7 +27,7 @@ sem_t *sem_wrk;
 int request() {
     int ret;
     /** 
-     * TODO: map the shared memory in the data array
+     * DONE: map the shared memory in the data array
      **/
     data = mmap(NULL, SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
     if(data == MAP_FAILED) handle_error("Error while mapping char *data to shared memory");
@@ -40,7 +40,7 @@ int request() {
     printf("request: data generated\n");
 
     /** 
-     * TODO: Signal the worker that it can start the elaboration and wait it has terminated
+     * DONE: Signal the worker that it can start the elaboration and wait it has terminated
      **/
     ret = sem_post(sem_wrk);
     if(ret == -1) handle_error("Error while raising worker_sem");
@@ -60,7 +60,7 @@ int request() {
         }
     }
     /**
-     * TODO: Release resources
+     * DONE: Release resources
      **/
     ret = munmap(data, SIZE);
     if(ret == -1) handle_error("Error while unmapping char *data from shared memory");
@@ -70,13 +70,13 @@ int request() {
 int work() {
     int ret;
     /**
-     * TODO: map the shared memory in the data array 
+     * DONE: map the shared memory in the data array 
      **/
     data = mmap(NULL, SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
     if(data == MAP_FAILED) handle_error("Error while mapping char *data to shared memory");
     printf("worker: mapped address: %p\n", data);
     /**
-     * TODO: Wait that the request() process generated data
+     * DONE: Wait that the request() process generated data
      **/
     ret = sem_wait(sem_wrk);
     if(ret == -1) handle_error("Error while waiting for worker_sem");
@@ -89,12 +89,12 @@ int work() {
     }
     printf("worker: release updated data\n");
     /**
-     * TODO: Signal the requester that elaboration terminated
+     * DONE: Signal the requester that elaboration terminated
      **/
     ret = sem_post(sem_req);
     if(ret == -1) handle_error("Error while raising req_sem");
     /**
-     * TODO: Release resources: close shared memory and semaphore
+     * DONE: Release resources: close shared memory and semaphore
      **/
     ret = close(shm_fd);
     if(ret == -1) handle_error("Error while closing shared memory");
@@ -108,7 +108,7 @@ int work() {
 int main(int argc, char **argv) {
     int ret;
     /** 
-     * TODO: Create and open the needed resources
+     * DONE: Create and open the needed resources
      * -> sem_req
      * -> sem_wrk
      * -> shared memory 
@@ -139,7 +139,7 @@ int main(int argc, char **argv) {
 
 
     /** 
-     * TODO: Close and release resources: close shared memory and semaphores, unlink both
+     * DONE: Close and release resources: close shared memory and semaphores, unlink both
      **/
     ret = close(shm_fd);
     if(ret == -1) handle_error("Error while closing shared_memory"); 
