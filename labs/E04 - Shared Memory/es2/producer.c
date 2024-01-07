@@ -27,41 +27,25 @@ int fd_shm;
 sem_t *sem_empty, *sem_filled, *sem_cs;
 
 void initMemory() {
-<<<<<<< HEAD
     /** 
      * TODO: 
      * -> Request the kernel to creare a shared memory, 
      * -> set its size to the size of struct shared_memory, 
      * -> and map the shared memory in the shared_mem_ptr variable.
      * -> Initialize the shared memory to 0.
-=======
-    /** COMPLETE THE FOLLOWING CODE BLOCK
-     *
-     * Request the kernel to creare a shared memory, set its size to the size of
-     * struct shared_memory, and map the shared memory in the shared_mem_ptr variable.
-     * Initialize the shared memory to 0.
->>>>>>> parent of 1b70686 (Shared Memory)
      **/
 
 }
 
 void closeMemory() {
-<<<<<<< HEAD
     /** 
      * TODO: 
      * -> unmap the shared memory, 
      * -> unlink the shared memory and 
      * -> close its descriptor
-=======
-    /** COMPLETE THE FOLLOWING CODE BLOCK
-     *
-     * unmap the shared memory, unlink the shared memory and close its descriptor
->>>>>>> parent of 1b70686 (Shared Memory)
      **/
 
 }
-
-
 
 void initSemaphores() {
     // delete state semaphores from a previous crash (if any)
@@ -118,15 +102,8 @@ void produce(int id, int numOps) {
         if (ret) handle_error("sem_wait cs");
 
         /**
-<<<<<<< HEAD
          * TODO: write value in the buffer inside the shared memory and update the producer position
          */
-=======
-         * Complete the following code:
-         * write value in the buffer inside the shared memory and update the producer position
-         */
-
->>>>>>> parent of 1b70686 (Shared Memory)
 
         ret = sem_post(sem_cs);
         if (ret) handle_error("sem_post cs");

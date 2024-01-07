@@ -30,24 +30,16 @@ sem_t *sem_empty, *sem_filled, *sem_cs;
 
 void openMemory() {
     /** 
-     *
-     * Request shared memory to the kernel and map the shared memory in the shared_mem_ptr variable.
+     * TODO: Request shared memory to the kernel and map the shared memory in the shared_mem_ptr variable.
      **/
-<<<<<<< HEAD
 
-=======
->>>>>>> parent of 1b70686 (Shared Memory)
 }
 
 void closeMemory() {
     /** 
-     *
-     * unmap the shared memory and close its descriptor
+     * TODO: unmap the shared memory and close its descriptor
      **/
-<<<<<<< HEAD
     
-=======
->>>>>>> parent of 1b70686 (Shared Memory)
 }
 
 
