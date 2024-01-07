@@ -24,12 +24,21 @@ int write_to_pipe(int fd, const void *data, size_t data_len) {
      * - gestire eventuali interruzioni ed errori
      * - assicurarsi che tutti i 'data_len' byte siano stati scritti
      * - restituire il numero di bytes scritti
-     **/
-     
-     
-     
-     
+    **/
+   int written_bytes = 0;
+   int bytes_left = data_len;
+   int i;
+    while(bytes_left > 0) {
+        i = write(fd, data + written_bytes, bytes_left);
+        if(i == 0) break;
+        if(i == -1 && errno == EINTR) continue;
+        else if(i == -1) handle_error("Error! while printing to pipe");
+        printf("[WRITER]: %s\n",(char*)data);
+        bytes_left -= i;
+        written_bytes += i;
+    }
 
+    return written_bytes;   
 }
 
 int read_from_pipe(int fd, void *data, size_t data_len) {
@@ -47,7 +56,22 @@ int read_from_pipe(int fd, void *data, size_t data_len) {
      * - restituire il numero di bytes letti
      **/
      
-     
+     int read_bytes = 0;
+   int bytes_left = data_len;
+   int i;
+    while(bytes_left > 0) {
+        i = read(fd, data + read_bytes, bytes_left);
+        if(i == 0) break;
+        if(i == -1 && errno == EINTR) continue;
+        else if(i == -1) handle_error("Error! while reading from pipe");
+        printf("[READER]: %s\n",(char*)data);
+        bytes_left -= i;
+        read_bytes += i;
+    }
+
+    
+
+    return read_bytes;   
      
      
 
@@ -85,15 +109,14 @@ void reader(int reader_id, sem_t* read_mutex) {
     int i,ret;
     printf("[READER_%d] processo reader creato.\n", reader_id);
 
-    /**
+    /*
      * COMPLETARE QUI
      *
      * Obiettivi:
      * - chiudere i descrittori della pipe non necessari
      * - gestire eventuali errori
-     **/
-     
-     
+    */
+    if(close(pipefd[1]) == -1) handle_error("Error! while closing writing lane in reader");     
      
      
     
@@ -123,7 +146,7 @@ void reader(int reader_id, sem_t* read_mutex) {
      * - gestire eventuali errori
      **/
      
-     
+     //if(close(pipefd[0]) == -1) handle_error("Error! while closing reading lane in reader");     
      
      
      
@@ -144,6 +167,8 @@ void writer(int writer_id, sem_t* write_mutex) {
      * - chiudere i descrittori della pipe non necessari
      * - gestire eventuali errori
      **/
+    
+    if(close(pipefd[0]) == -1) handle_error("Error! while closing reading lane in writer"); 
      
      
      
@@ -171,10 +196,8 @@ void writer(int writer_id, sem_t* write_mutex) {
      * - chiudere i descrittori rimanenti
      * - gestire eventuali errori
      **/
-     
-     
-     
-     
+     if(close(pipefd[1]) == -1) handle_error("Error! while closing writing lane in writer"); 
+    
 
 }
 
@@ -196,10 +219,9 @@ int main(int argc, char* argv[]) {
      * Obiettivi:
      * - creare una pipe nella variabile globale 'pipefd'
      * - gestire eventuali errori
-     **/
-     
-     
-     
+    */
+
+    if(pipe(pipefd) == -1) handle_error("Error! while opening pipe");     
      
     for (i = 0; i < READERS_COUNT; i++) {
         pid = fork();
