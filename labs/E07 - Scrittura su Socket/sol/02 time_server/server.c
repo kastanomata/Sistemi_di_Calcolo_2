@@ -21,28 +21,21 @@ void connection_handler(int socket_desc) {
     size_t recv_buf_len = sizeof(recv_buf);
     int recv_bytes;
 
-    /** 
-     * TODO: RECEIVE DATA HERE
+    /** [SOLUTION]
+     *
      * Suggestions:
      * - recv() with flags = 0 is equivalent to read() on a descriptor
      * - on a socket we get 0 as return value only when the peer closes
      *   the connection: if there are no bytes to read and we invoke
      *   recv() we will get stuck since the call is blocking!
-     * - store the number of received bytes in recv_bytes
-     */
-    // while(1) {
-    //     int ret = recv(socket_desc, recv_buf, recv_buf_len - 1, 0);
-    //     if(ret == -1) {
-    //         if(errno == EINTR) continue;
-    //         handle_error("Error while receiving data from client");
-    //     }
-    //     if(ret == 0) break;
-    //     recv_bytes++;
-    // }
+     * - store the number of received bytes in recv_bytes     
+     *
+     * For the time being we don't deal with partially received replies!
+     */     
     while ( (recv_bytes = recv(socket_desc, recv_buf, recv_buf_len, 0)) < 0 ) {
         if (errno == EINTR) continue;
         handle_error("Cannot read from socket");
-    }   
+    }     
 
     if (DEBUG) fprintf(stderr, "Message of %d bytes received\n", recv_bytes);
 
@@ -58,15 +51,19 @@ void connection_handler(int socket_desc) {
     // send reply
     size_t server_message_len = strlen(send_buf);
 
-    /** 
-     * TODO: SEND DATA HERE
+    /** INSERT CODE TO SEND DATA HERE
+     *
      * Suggestions:
      * - send() with flags = 0 is equivalent to write() on a descriptor
      * - for now don't deal with messages partially sent
+     *
+     * For the time being we won't deal with partially sent messages!
      */
-    ret = send(socket_desc, send_buf, server_message_len, 0);
-    if(ret == -1) handle_error("Error while sending data");
-   
+    while ( (ret = send(socket_desc, send_buf, server_message_len, 0)) < 0 ) {
+        if (errno == EINTR) continue;
+        handle_error("Cannot write to the socket");
+    }
+    
     if (DEBUG) fprintf(stderr, "Message of %d bytes sent\n", ret);
 
     // close socket

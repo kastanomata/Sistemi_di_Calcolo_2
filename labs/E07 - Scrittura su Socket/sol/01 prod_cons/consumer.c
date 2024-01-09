@@ -18,10 +18,11 @@ int fifo;
 void openFIFO() {
     /** COMPLETE THE FOLLOWING CODE BLOCK
      *
-     * Open the FIFO
+     * Request the kernel to create a FIFO and open it
      **/
 
- 
+    fifo = open(FIFO_NAME, O_RDONLY);
+    if(fifo == -1) handle_error("Cannot open FIFO for writing");
 
 }
 
@@ -33,28 +34,51 @@ static void closeFIFO() {
      * - Destroy the fifo
      * */
 
+    // close the descriptors
+    int ret = close(fifo);
+    if(ret) handle_error("Cannot close FIFO");
+
+    // destroy the FIFO
+    ret = unlink(FIFO_NAME);
+    if(ret) handle_error("Cannot unlink FIFO");
 }
 
 int readValue(int * value) {
 
     int ret;
 
-    /** [TO DO] READ THE MESSAGE THROUGH THE FIFO DESCRIPTOR
+    /** [SOLUTION] READ THE MESSAGE THROUGH THE FIFO DESCRIPTOR
      *
      * Suggestions:
-     * - you can read from a FIFO as from a regular file descriptor
-     * - In this case you have to receive an integer,
-     *   hence you know its size
+     * - We assume that the read of a small amount of bytes cannot
+     *   be interrupted in the mid of the operation or we have only a reader. 
+     *   Otherwise we should introduce all the controls for partial reads and
+     *   need sincronization mechanism for multiple readers.
+     * - You can read from a FIFO as from a regular file descriptor.
+     * - Since you know the length of the message, just
+     *   read the correct size in a time from the socket
      * - repeat the read() when interrupted before reading any data
      * - return the number of bytes read
      * - reading 0 bytes means that the other process has closed
      *   the FIFO unexpectedly: this is an error that should be
      *   dealt with!
+     * - reading less bytes than the message size involve a possible interleaving
+     *   problem between multiple readers. I suggest to abort
      **/
     int bytes_read = 0;
-
+    do {
+        ret = read(fifo, value, sizeof(int));
+        if (ret == -1 && errno == EINTR) continue;
+        if (ret == -1) handle_error("Cannot read from FIFO");
+        if (ret ==  0) handle_error("Process has closed the FIFO unexpectedly! Exiting...\n");
+        if (ret < sizeof(int)) handle_error_en(ret, "partial read from FIFO");
+        // we use post-increment on bytes_read so that we first read the
+        // byte that has just been written, then we do the increment
+        bytes_read += ret;
+    } while(bytes_read != sizeof(int));
     return bytes_read;
 }
+
 
 void consume(int id, int numOps) {
     int localSum = 0;
@@ -63,10 +87,10 @@ void consume(int id, int numOps) {
 
         /**
          * Complete the following code:
-         * read the message from FIFO and update the producer position
+         * write value in the buffer inside the shared memory and update the producer position
          */
         readValue(&value);
-        
+
         localSum += value;
         numOps--;
     }

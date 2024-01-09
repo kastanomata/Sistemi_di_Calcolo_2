@@ -35,14 +35,17 @@ int main(int argc, char* argv[]) {
     char* command = SERVER_COMMAND;
     size_t command_len = strlen(command);
 
-    /** 
-     * TODO: SEND DATA HERE
+    /** [SOLUTION]
+     *
      * Suggestions:
      * - send() with flags = 0 is equivalent to write() on a descriptor
-     * - for now don't deal with messages partially sent
+     * 
+     * For the time being we won't deal with partially sent messages.
      */
-    ret = send(socket_desc, command, command_len, 0);
-    if(ret == -1) handle_error("Error while sending data");
+    while ( (ret = send(socket_desc, command, command_len, 0)) < 0) {
+        if (errno == EINTR) continue;
+        handle_error("Cannot write to socket");
+    }
 
     if (DEBUG) fprintf(stderr, "Message of %d bytes sent\n", ret);
 
@@ -51,31 +54,22 @@ int main(int argc, char* argv[]) {
     size_t recv_buf_len = sizeof(recv_buf);
     int recv_bytes;
 
-    /** 
-     * TODO: RECEIVE DATA HERE
+    /** [SOLUTION]
+     *
      * Suggestions:
      * - recv() with flags = 0 is equivalent to read() on a descriptor
      * - on a socket we get 0 as return value only when the peer closes
      *   the connection: if there are no bytes to read and we invoke
      *   recv() we will get stuck since the call is blocking!
      * - store the number of received bytes in recv_bytes
+     *
+     * For the time being we don't deal with partially received replies!
      */
-    // while(1) {
-    //     int ret = recv(socket_desc, recv_buf, recv_buf_len - 1, 0);
-    //     if(ret == -1) {
-    //         if(errno == EINTR) continue;
-    //         handle_error("Error while receiving data from client");
-    //     }
-    //     if(ret == 0) break;
-    //     recv_bytes++;
-    // }
-    do {
-        recv_bytes = recv(socket_desc, recv_buf, recv_buf_len, 0);
-        if(recv_bytes == -1) {
-            if (errno == EINTR) continue;
-            handle_error("Cannot read from socket");
-        } 
-    } while(recv_bytes < 0);
+    while ( (recv_bytes = recv(socket_desc, recv_buf, recv_buf_len - 1, 0)) < 0 ) {
+        if (errno == EINTR) continue;
+        handle_error("Cannot read from socket");
+    }
+    
     if (DEBUG) fprintf(stderr, "Message of %d bytes received\n", recv_bytes);
 
     recv_buf[recv_bytes] = '\0'; // add string terminator manually!
