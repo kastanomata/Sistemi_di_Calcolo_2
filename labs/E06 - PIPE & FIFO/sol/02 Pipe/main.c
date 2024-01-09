@@ -2,7 +2,6 @@
 #include <fcntl.h>
 #include <semaphore.h>
 #include <sys/wait.h>
-#include <limits.h>
 #include "common.h"
 
 #define WRITERS_COUNT  2
@@ -17,33 +16,32 @@ int pipefd[2];
 int write_to_pipe(int fd, const void *data, size_t data_len) {
 
     /**
-     * TODO:
+     * COMPLETARE QUI
+     *
      * Obiettivi:
      * - scrivere sul descrittore 'fd' in input i primi 'data_len' bytes
      *   contenuti in 'data'
      * - gestire eventuali interruzioni ed errori
      * - assicurarsi che tutti i 'data_len' byte siano stati scritti
      * - restituire il numero di bytes scritti
-    **/
-   int written_bytes = 0;
-   int bytes_left = data_len;
-   int i;
-    while(bytes_left > 0) {
-        i = write(fd, data + written_bytes, bytes_left);
-        if(i == 0) break;
-        if(i == -1 && errno == EINTR) continue;
-        else if(i == -1) handle_error("Error! while printing to pipe");
-        printf("[WRITER]: %s\n",(char*)data);
-        bytes_left -= i;
-        written_bytes += i;
-    }
+     **/
 
-    return written_bytes;   
+    int written_bytes = 0, ret;
+
+    while (written_bytes < data_len) {
+        ret = write(fd, data + written_bytes, data_len - written_bytes);
+        if (ret == -1 && errno == EINTR) continue;
+        if (ret == -1) handle_error("error writing to pipe");
+        written_bytes += ret;
+    }
+    return written_bytes;
 }
 
 int read_from_pipe(int fd, void *data, size_t data_len) {
+
     /**
-     * TODO:
+     * COMPLETARE QUI
+     *
      * Obiettivi:
      * - leggere dal descrittore 'fd' in input 'data_len' bytes e
      *   memorizzarli in 'data'
@@ -52,18 +50,15 @@ int read_from_pipe(int fd, void *data, size_t data_len) {
      *   programma con un errore
      * - assicurarsi che tutti i 'data_len' bytes siano stati letti
      * - restituire il numero di bytes letti
-     **/ 
-    int read_bytes = 0;
-    int bytes_left = data_len;
-    int i;
-    while(bytes_left > 0) {
-        i = read(fd, data + read_bytes, bytes_left);
-        if(i == 0) break;
-        if(i == -1 && errno == EINTR) continue;
-        else if(i == -1) handle_error("Error! while reading from pipe");
-        printf("[READER]: %s\n",(char*)data);
-        bytes_left -= i;
-        read_bytes += i;
+     **/
+
+    int read_bytes = 0, ret;
+    while (read_bytes < data_len) {
+        ret = read(fd, data + read_bytes, data_len - read_bytes);
+        if (ret == -1 && errno == EINTR) continue;
+        if (ret == -1) handle_error("error reading from pipe");
+        if (ret ==  0) handle_error("unexpected close of the pipe");
+        read_bytes += ret;
     }
     return read_bytes;
 }
@@ -71,7 +66,7 @@ int read_from_pipe(int fd, void *data, size_t data_len) {
 /**
  * Questa funzione scrive nell'array di interi 'data' un numero pari a
  * 'elem_count' di interi, tutti aventi lo stesso valore 'value'.
- **/ 
+ **/
 void create_msg(int *data, int elem_count, int value) {
     int i;
     for (i = 0; i < elem_count; i++) {
@@ -95,52 +90,48 @@ int is_msg_ok(const int *data, int elem_count) {
 
 void reader(int reader_id, sem_t* read_mutex) {
     int data[MSG_ELEMS];
-    int i,ret;
     printf("[READER_%d] processo reader creato.\n", reader_id);
 
     /**
-     * TODO:
+     * COMPLETARE QUI
      *
      * Obiettivi:
-     * - chiudere i descrittori della pipe non necessari
+     * - chiudere i descrittori non necessari
      * - gestire eventuali errori
      **/
-    if(close(pipefd[1]) == -1) handle_error("Error! while closing writing lane in reader");     
-     
-     
-    
-    for (i = 0; i < MSG_COUNT/READERS_COUNT; i++) {
+
+    int ret = close(pipefd[1]);
+    if(ret) handle_error("error closing pipe");
+
+    int i = 0;
+    for ( ; i < MSG_COUNT/READERS_COUNT; i++) {
 
         ret = sem_wait(read_mutex);
-        if(ret) handle_error("error waiting on read mutex");
-        
+        if(ret) handle_error("READER: error waiting on read mutex");
+
         read_from_pipe(pipefd[0], data, sizeof(data)); // sizeof(data) == MSG_ELEMS * sizeof(int)
 
         ret = sem_post(read_mutex);
-        if(ret) handle_error("error posting on read mutex");
+        if(ret) handle_error("READER: error posting on read mutex");
 
-        printf("[CHILD_%d] Letto msg #%d con valore %d\n", reader_id, i, data[0]);
+        printf("[READER_%d] Letto msg #%d con valore %d\n", reader_id, i, data[0]);
         if (!is_msg_ok(data, MSG_ELEMS))
-            printf("corrupted message!!!\n");
+            printf("READER: corrupted message!!!\n");
     }
 
     ret = sem_close(read_mutex);
-    if(ret) handle_error("error closing read mutex");
+    if(ret) handle_error("READER: error closing read mutex");
 
     /**
-     * TODO:
+     * COMPLETARE QUI
      *
      * Obiettivi:
-     * - chiudere i descrittori della pipe rimanenti
+     * - chiudere i descrittori rimanenti
      * - gestire eventuali errori
      **/
-     
-     //if(close(pipefd[0]) == -1) handle_error("Error! while closing reading lane in reader");     
-     
-     
-     
+
     ret = close(pipefd[0]);
-    if(ret) handle_error("error closing pipe");
+    if(ret) handle_error("READER: error closing pipe");
 
 }
 
@@ -148,81 +139,86 @@ void writer(int writer_id, sem_t* write_mutex) {
     int data[MSG_ELEMS];
     int i,ret;
     printf("[WRITER_%d] processo writer creato.\n", writer_id);
-    
+
     /**
-     * TODO:
+     * COMPLETARE QUI
      *
      * Obiettivi:
-     * - chiudere i descrittori della pipe non necessari
+     * - chiudere i descrittori non necessari
      * - gestire eventuali errori
      **/
-    
-    if(close(pipefd[0]) == -1) handle_error("Error! while closing reading lane in writer"); 
-     
-     
-     
-     
+
+    ret = close(pipefd[0]);
+    if(ret) handle_error("error closing pipe");
+
     for (i = 0 ; i < MSG_COUNT/WRITERS_COUNT; i++) {
         create_msg(data, MSG_ELEMS, i);
         ret = sem_wait(write_mutex);
         if(ret) handle_error("error waiting on write mutex");
-        
+
         write_to_pipe(pipefd[1], data, sizeof(data)); // sizeof(data) == MSG_ELEMS * sizeof(int)
-        
+
         ret = sem_post(write_mutex);
         if(ret) handle_error("error posting on write mutex");
-        
+
         printf("[WRITER_%d] Inviato il msg #%d\n", writer_id, i);
      }
 
     ret = sem_close(write_mutex);
-    if(ret) handle_error("error closing write mutex");
+    if(ret) handle_error("WRITER: error closing write mutex");
 
     /**
-     * TODO:
+     * COMPLETARE QUI
      *
      * Obiettivi:
      * - chiudere i descrittori rimanenti
      * - gestire eventuali errori
      **/
-     if(close(pipefd[1]) == -1) handle_error("Error! while closing writing lane in writer"); 
-    
+
+    ret = close(pipefd[1]);
+    if(ret) handle_error("error closing pipe");
+
 
 }
 
 int main(int argc, char* argv[]) {
-    int ret, i;
+    int ret,i;
     pid_t pid;
 
+
+    //avrebe avuto più senso usare unnamed semaphore
     sem_unlink(READ_MUTEX);
     sem_t *read_mutex = sem_open(READ_MUTEX, O_CREAT|O_EXCL, 0600, 1);
     if(read_mutex == SEM_FAILED) handle_error("Error Creating Read Mutex");
-    
+
     sem_unlink(WRITE_MUTEX);
     sem_t *write_mutex = sem_open(WRITE_MUTEX, O_CREAT|O_EXCL, 0600, 1);
     if(write_mutex == SEM_FAILED) handle_error("Error Creating Write Mutex");
-    
+
     /**
-     * TODO:
+     * COMPLETARE QUI
+     *
      * Obiettivi:
-     * -> creare una pipe nella variabile globale 'pipefd'
-     * -> gestire eventuali errori
+     * - creare una pipe nella variabile globale 'pipefd'
+     * - gestire eventuali errori
      **/
+
     ret = pipe(pipefd);
-    if(ret == -1) handle_error("Error! while opening pipe");     
-     
+    if(ret) handle_error("error creating the pipe");
+
     for (i = 0; i < READERS_COUNT; i++) {
         pid = fork();
         if (pid == -1) handle_error("Error creating reader");
         if (pid == 0) {
+            ret = sem_close(write_mutex);
+            if(ret) handle_error("reader: error closing write mutex");
             reader(i,read_mutex);
             _exit(0);
         }
     }
 
     ret = sem_close(read_mutex);
-    if(ret == -1) handle_error("Error closing read mutex");
-
+    if(ret) handle_error("Error closing read mutex");
     for (i = 0; i < WRITERS_COUNT; i++) {
         pid = fork();
         if (pid == -1) handle_error("error creating reader");
@@ -231,16 +227,24 @@ int main(int argc, char* argv[]) {
             _exit(0);
         }
     }
-    
+    // sono il parent
     ret = sem_close(write_mutex);
-    if(ret) handle_error("Error closing write mutex");
+    if(ret) handle_error("PARENT: Error closing write mutex");
+
+    // NOTA: per pulizia chiudiamo i descrittori anche nel main process
+    ret = close(pipefd[0]);
+    if(ret) handle_error("error closing pipe");
+    ret = close(pipefd[1]);
+    if(ret) handle_error("error closing pipe");
 
     // shutdown phase
     for (i = 0 ; i < READERS_COUNT + WRITERS_COUNT; i++) {
         int status;
         ret = wait(&status);
-        if(ret == 1) handle_error("error waiting for a child to terminate");
-        if (WEXITSTATUS(status)) handle_error("child process died unexpectedly");
+        if(ret == -1) handle_error("error waiting for a child to terminate");
+        if (WEXITSTATUS(status)) {
+            handle_error("ERROR: child process died unexpectedly");
+        }
     }
 
     printf("[PARENT] processi figlio terminati.\n");

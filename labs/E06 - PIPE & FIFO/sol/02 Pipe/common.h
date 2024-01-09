@@ -8,17 +8,8 @@
 #include <stdint.h>
 #include <limits.h>
 
-
 // macros for handling errors
 #define handle_error_en(en, msg)    do { errno = en; perror(msg); exit(EXIT_FAILURE); } while (0)
 #define handle_error(msg)           do { perror(msg); exit(EXIT_FAILURE); } while (0)
-
-/* Configuration parameters */
-#define DEBUG           1   // display debug messages
-#define QUIT_COMMAND    "QUIT"
-#define CLNT_FIFO_NAME  "/dev/shm/fifo_client"
-#define ECHO_FIFO_NAME  "/dev/shm/fifo_echo"
-#define BUFFER_SIZE 1024
-
 
 #endif

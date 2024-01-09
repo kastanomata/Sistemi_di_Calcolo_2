@@ -8,18 +8,21 @@
 #include <sys/stat.h>  // mkfifo()
 
 #include "common.h"
+int readOneByOne(int fd, char* buf, char separator);
+int writeMsg(int fd, char* buf, int size);
 
 /** Client component **/
 int main(int argc, char* argv[]) {
     int ret;
     int echo_fifo, client_fifo;
     int bytes_left, bytes_sent, bytes_read;
-    char buf[1024];
+    char buf[BUFFER_SIZE];
+    // 222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222
 
     char* quit_command = QUIT_COMMAND;
     size_t quit_command_len = strlen(quit_command);
 
-    /** INSERT CODE HERE TO OPEN THE TWO FIFOS
+    /** TODO: TO OPEN THE TWO FIFOS
      *
      * Suggestions:
      * - the two FIFOs should be opened in the same order in both the
@@ -28,9 +31,13 @@ int main(int argc, char* argv[]) {
      *   requirement: the Echo program sends data through 'echo_fifo'
      *   and the Client program does it through 'client_fifo'
      **/
+    echo_fifo = open(ECHO_FIFO_NAME, O_RDONLY);
+    if(echo_fifo == -1) handle_error("Cannot open Echo FIFO for reading");
+    client_fifo = open(CLNT_FIFO_NAME, O_WRONLY);
+    if(client_fifo == -1) handle_error("Cannot open Client FIFO for writing");
 
     // display welcome message received from the Echo process
-    /** INSERT CODE HERE TO READ THE MESSAGE THROUGH THE ECHO FIFO
+    /** TODO: TO READ THE MESSAGE THROUGH THE ECHO FIFO
      *
      * Suggestions:
      * - you can read from a FIFO as from a regular file descriptor
@@ -43,7 +50,7 @@ int main(int argc, char* argv[]) {
      * - reading 0 bytes means that the other process has closed
      *   the FIFO unexpectedly: this is an error to deal with!
      **/
-
+    bytes_read = readOneByOne(echo_fifo, buf, '\n');
     buf[bytes_read] = '\0';
     printf("%s", buf);
 
@@ -59,7 +66,7 @@ int main(int argc, char* argv[]) {
         // send message to Echo process
         bytes_left = strlen(buf); // discard '\n' from the end of the message
         bytes_sent = 0;
-        /** INSERT CODE HERE TO SEND THE MESSAGE THROUGH THE CLIENT FIFO
+        /** TODO: TO SEND THE MESSAGE THROUGH THE CLIENT FIFO
          *
          * Suggestions:
          * - you can write on the FIFO as on a regular file descriptor
@@ -67,13 +74,15 @@ int main(int argc, char* argv[]) {
          *   cycle in the implementation as we did for file descriptors!
          * - store the total number of bytes sent in 'bytes_sent'
          **/
-
+        int msg_len = strlen(buf);
+        bytes_sent = writeMsg(client_fifo, buf, msg_len);
+    
         /* After a quit command we won't receive data from the server
          * anymore, thus we must exit the main loop. */
         if (bytes_sent - 1 == quit_command_len && !memcmp(buf, quit_command, quit_command_len)) break;
 
         // read message from Echo process
-        /** INSERT CODE HERE TO READ THE MESSAGE THROUGH THE ECHO FIFO
+        /** TODO: TO READ THE MESSAGE THROUGH THE ECHO FIFO
          *
          * Suggestions:
          * - you can read from a FIFO as from a regular file descriptor
@@ -85,8 +94,9 @@ int main(int argc, char* argv[]) {
          * - reading 0 bytes means that the other process has closed
          *   the FIFO unexpectedly: this is an error to deal with!
          **/
+        bytes_read = readOneByOne(echo_fifo, buf, '\n');
         buf[bytes_read] = '\0';
-        printf("Server response: %s\n", buf);
+        printf("Server response: %s", buf);
     }
 
     // close the descriptors

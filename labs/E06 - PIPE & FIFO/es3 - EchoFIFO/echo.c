@@ -8,7 +8,8 @@
 #include <sys/stat.h>  // mkfifo()
 
 #include "common.h"
-
+int readOneByOne(int fd, char* buf, char separator);
+int writeMsg(int fd, char* buf, int size);
 /** Echo component **/
 int main(int argc, char* argv[]) {
     int ret;
@@ -18,15 +19,17 @@ int main(int argc, char* argv[]) {
 
     char* quit_command = QUIT_COMMAND;
     size_t quit_command_len = strlen(quit_command);
-
     // Create the two FIFOs
-    ret = mkfifo(ECHO_FIFO_NAME, 0666);
-    if(ret) handle_error("Cannot create Echo FIFO");
-    ret = mkfifo(CLNT_FIFO_NAME, 0666);
-    if(ret) handle_error("Cannot create Client FIFO");
+    ret = unlink(ECHO_FIFO_NAME);
+    ret = unlink(CLNT_FIFO_NAME);
 
-    /** INSERT CODE HERE TO OPEN THE TWO FIFOS
-     *
+    ret = mkfifo(ECHO_FIFO_NAME, 0666);
+    if(ret == -1) handle_error("Cannot create Echo FIFO");
+    ret = mkfifo(CLNT_FIFO_NAME, 0666);
+    if(ret == -1) handle_error("Cannot create Client FIFO");
+
+    /** 
+     * TODO: OPEN THE TWO FIFOS
      * Suggestions:
      * - the two FIFOs should be opened in the same order in both the
      *   Echo and the Client programs to avoid deadlocks
@@ -34,22 +37,27 @@ int main(int argc, char* argv[]) {
      *   requirement: the Echo program sends data through 'echo_fifo'
      *   and the Client program does it through 'client_fifo'
      **/
+    echo_fifo = open(ECHO_FIFO_NAME, O_WRONLY);
+    if(echo_fifo == -1) handle_error("Cannot open Echo FIFO for writing");
+    client_fifo = open(CLNT_FIFO_NAME, O_RDONLY);
+    if(client_fifo==-1) handle_error("Cannot open Client FIFO for reading");
 
     // send welcome message
     sprintf(buf, "Hi! I'm an Echo process based on FIFOs. I will send you back through a FIFO whatever"
             " you send me through the other FIFO, and I will stop and exit when you send me %s.\n", quit_command);
     bytes_left = strlen(buf);
     bytes_sent = 0;
-    /** INSERT CODE HERE TO SEND THE MESSAGE THROUGH THE ECHO FIFO
-     *
+    /** 
+     * TODO: TO SEND THE MESSAGE THROUGH THE ECHO FIFO
      * Suggestions:
      * - you can write on the FIFO as on a regular file descriptor
      * - make sure that all the bytes have been written: use a while
      *   cycle in the implementation as we did for file descriptors!
      **/
+    bytes_sent = writeMsg(echo_fifo, buf, strlen(buf));
 
     while (1) {
-        /** INSERT CODE HERE TO READ THE MESSAGE THROUGH THE CLIENT FIFO
+        /** TODO: TO READ THE MESSAGE THROUGH THE CLIENT FIFO
          *
          * Suggestions:
          * - you can read from a FIFO as from a regular file descriptor
@@ -61,7 +69,7 @@ int main(int argc, char* argv[]) {
          * - reading 0 bytes means that the other process has closed
          *   the FIFO unexpectedly: this is an error to deal with!
          **/
-
+        bytes_read = readOneByOne(client_fifo, buf, '\n');
         if (DEBUG) {
             buf[bytes_read] = '\0';
             printf("Message received: %s", buf);
@@ -73,13 +81,14 @@ int main(int argc, char* argv[]) {
         // ... or if I have to send the message back through the Echo FIFO
         bytes_left = bytes_read;
         bytes_sent = 0;
-        /** INSERT CODE HERE TO SEND THE MESSAGE THROUGH THE ECHO FIFO
+        /** TODO: TO SEND THE MESSAGE THROUGH THE ECHO FIFO
          *
          * Suggestions:
          * - you can write on the FIFO as on a regular file descriptor
          * - make sure that all the bytes have been written: use a while
          *   cycle in the implementation as we did for file descriptors!
          **/
+        bytes_sent = writeMsg(echo_fifo, buf, bytes_read);
     }
 
     // close the descriptors

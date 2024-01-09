@@ -16,7 +16,7 @@ static inline void performCopyBetweenDescriptors(int src_fd, int dest_fd, int bl
     while (1) {
         int read_bytes = 0; // index for writing into the buffer
         int bytes_left = block_size; // number of bytes to (possibly) read
-        int i;
+
         while (bytes_left > 0) {
             /** [SOLUTION]
              *
@@ -33,16 +33,26 @@ static inline void performCopyBetweenDescriptors(int src_fd, int dest_fd, int bl
              *
              * In a correct solution you have to deal explicitly with
              * the two cases described above. */
+            int ret = read(src_fd, buf + read_bytes, bytes_left);
 
-            int ret;
-            ret = read(src_fd, buf + read_bytes, bytes_left);   // leggi i byte
-            if(ret == 0) break;                                 // se non ci sono byte da leggere, EOF
-            if(ret == -1) {                                     // se avviene un errore
-                if(errno == EINTR) continue;                    // e l'errore è un'interruzione da tastiera continua
-                handle_error("Error while reading file");       // altrimenti segnala e termina
+            // no more bytes left to read!
+            if (ret == 0) break;
+
+            if (ret == -1){
+                if(errno == EINTR) // read() interrupted by a signal
+                    continue;
+                // handle generic errors
+                handle_error("Cannot read from source file");
             }
-            read_bytes += ret; // aggiorna il numero di bytes letti
-            bytes_left -= ret; // aggiorna il numero di bytes rimanenti
+
+
+            /* The value returned may be less than bytes_left if the number
+             * of bytes left in the file is less than bytes_left, if the
+             * read() request was interrupted by a signal, or if the file
+             * is a pipe or FIFO or special file and has fewer than
+             * bytes_left bytes immediately available for reading */
+            bytes_left -= ret;
+            read_bytes += ret;
         }
 
         // no more bytes left to write!
@@ -67,15 +77,18 @@ static inline void performCopyBetweenDescriptors(int src_fd, int dest_fd, int bl
              *
              * In a correct solution you have to deal explicitly with
              * the two cases described above. */
-            int ret;
-            ret = write(dest_fd, buf + written_bytes, bytes_left);      // leggi il file
-            if(ret == -1) {                                             // se c'è un errore 
-                if(errno == EINTR) continue;                            // e l'errore è un interruzione da tastiera continua
-                handle_error("Error while writing destination file");   // altrimenti segnala e termina
+            int ret = write(dest_fd, buf + written_bytes, bytes_left);
+
+
+            if (ret == -1){
+                if(errno == EINTR) // write() interrupted by a signal
+                    continue;
+                // handle generic errors
+                handle_error("Cannot write to destination file");
             }
-            written_bytes += ret;   // aggiorna il numero di bytes scritti
-            bytes_left -= ret;      // aggiorna il numero di bytes rimanenti
-                       
+
+            bytes_left -= ret;
+            written_bytes += ret;
         }
     }
 
