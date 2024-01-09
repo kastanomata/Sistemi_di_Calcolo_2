@@ -3,8 +3,8 @@
 
 #include <errno.h>
 #include <stdio.h>
-#include <semaphore.h>
 #include <stdlib.h>
+#include <semaphore.h>
 
 // macros for handling errors
 #define handle_error_en(en, msg)    do { errno = en; perror(msg); exit(EXIT_FAILURE); } while (0)
@@ -25,18 +25,17 @@ struct cell{
 
 // definizione struttura dati per la memoria
 struct shared_memory {
+    struct cell buf[BUFFER_SIZE];
+    int read_index;
+    int write_index;
      /**
-     * COMPLETARE QUI
-     *
+     * TODO:
      * Obiettivi:
      * - definire i semafori unnamed necessari per gestire la concorrenza
      */
-    sem_t sem_filled;
-    sem_t sem_empty;
-    sem_t sem_mem;
-    struct cell buf [BUFFER_SIZE];
-    int read_index;
-    int write_index;
+    sem_t empty_sem;
+    sem_t full_sem;
+    sem_t cs_sem;
 };
 
 // methods defined in common.c
