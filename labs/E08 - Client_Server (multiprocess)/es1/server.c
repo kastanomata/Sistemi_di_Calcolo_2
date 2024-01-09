@@ -13,21 +13,20 @@
 // Method for processing incoming requests. The method takes as argument
 // the socket descriptor for the incoming connection.
 void* connection_handler(int socket_desc) {
-    int recv_bytes, bytes_sent = 0;
-
+    int ret, recv_bytes, bytes_sent;
     char buf[1024];
     size_t buf_len = sizeof(buf);
     int msg_len;
+    char terminator = '\n';
     memset(buf,0,buf_len);
 
     char* quit_command = SERVER_COMMAND;
-    //size_t quit_command_len = strlen(quit_command);
+    size_t quit_command_len = strlen(quit_command);
 
     // send welcome message
     sprintf(buf, "Hi! I'm an echo server. I will send you back whatever"
             " you send me. I will stop if you send me %s", quit_command);
     msg_len = strlen(buf);
-    puts(buf);
     /**
      *  TODO: Sending welcome message
      *
@@ -35,9 +34,16 @@ void* connection_handler(int socket_desc) {
      * - send() with flags = 0 is equivalent to write() to a descriptor
      * - the message you have to send has been written in buf
      * - deal with partially sent messages (message size is not buffer size)
-    */
-   
-    if(send(socket_desc, buf, msg_len, 0) != msg_len) fprintf(stderr, "welcome message error");
+     */
+    bytes_sent = 0;
+    do {
+        ret = send(socket_desc, buf + bytes_sent, msg_len - bytes_sent, 0);
+        if(ret == -1) {
+            if(errno == EINTR) continue;
+            handle_error("Error while sending message to client");
+        }
+        bytes_sent += ret;
+    } while(bytes_sent < msg_len);
 
     if (DEBUG) fprintf(stderr, "Welcome message <<%s>> has been sent\n",buf);
 
@@ -54,20 +60,26 @@ void* connection_handler(int socket_desc) {
          *   recv() we will get stuck, because the call is blocking!
          * - deal with partially sent messages (we do not know the message size)
          */
-        char temp;
         recv_bytes = 0;
+        ret = 0;
+        int close_flag = 0;
         do {
-            recv(socket_desc, &temp, sizeof(char), 0);
-            buf[recv_bytes++] = temp;
-        } while(temp != '\0');
-        if(buf[recv_bytes] != '\0') {
+            ret = recv(socket_desc, buf + recv_bytes, 1, 0);
+            if(ret == -1) {
+                if(errno == EINTR) continue;
+                handle_error("Error while receiving data from client");
+            }
+            if(ret == 0) {
+                close_flag = 1;
+                fprintf(stderr, "Client closed connection unexpectedly\n");
+                break;
+            }
             recv_bytes++;
-            buf[recv_bytes] = '\0';
-        }
-        
+        } while(recv_bytes < (1024 - 2) && buf[recv_bytes-1] != terminator);
+        buf[recv_bytes] = '\0';
+        if(close_flag == 1) break;
         if (DEBUG) fprintf(stderr, "Received command of %d bytes...\n",recv_bytes);
-        puts(buf);
-
+        msg_len = recv_bytes;
         /**
          *  TODO: check if the quit_command is received
          *  TODO: in this case we have to quit from the echo loop
@@ -79,13 +91,10 @@ void* connection_handler(int socket_desc) {
          * - perform a byte-to-byte comparsion when required using
          *   memcmp(const void *ptr1, const void *ptr2, size_t num)
          * - exit from the cycle when there is nothing to send back
-        */
-
-        
-        if(strcmp(buf, SERVER_COMMAND) == 0) {
+         */
+        printf("Message received: %s\n", buf);
+        if(recv_bytes == quit_command_len && !memcmp(buf, quit_command, quit_command_len)) 
             break;
-        }
-        
 
         // ...or I have to send the message back
         /**
@@ -97,25 +106,31 @@ void* connection_handler(int socket_desc) {
          * - deal with partially sent messages
          * - message size IS NOT buf size
          */
-        if(send(socket_desc, (const void*) buf, msg_len, 0) != msg_len) fprintf(stderr, "echo message error\n");
+        bytes_sent = 0;
+        do {
+            ret = send(socket_desc, buf + bytes_sent, msg_len - bytes_sent, 0);
+            if(ret == -1) {
+                if(errno == EINTR) continue;
+                handle_error("Error while sending message to client");
+            }
+            bytes_sent += ret;
+        } while(bytes_sent < msg_len);
 
         if (DEBUG) fprintf(stderr, "Sent message of %d bytes back...\n", bytes_sent);
     }
-
-
     /**
      *  TODO: close socket and release unused resources
-    */
-
-    if(close(socket_desc) == -1) handle_error("close socket error");
-
+     */
+    ret = close(socket_desc);
+    if(ret == -1) handle_error("Error while closing socket");
     if (DEBUG) fprintf(stderr, "Socket closed...\n");
 
     return NULL;
 }
 
 int main(int argc, char* argv[]) {
-    int socket_desc, client_desc;
+    int ret;
+    int socket_desc, client_desc; // file descriptor
 
     // some fields are required to be filled with 0
     struct sockaddr_in server_addr = {0}, client_addr = {0};
@@ -128,18 +143,18 @@ int main(int argc, char* argv[]) {
      * Suggestions:
      * - protocollo AF_INET
      * - tipo SOCK_STREAM
-    */
+     */
+    socket_desc = socket(AF_INET, SOCK_STREAM, 0); // IPv4, TCP
+    if(socket_desc == -1) handle_error("Error while creating socket");
 
-    socket_desc = socket(AF_INET, SOCK_STREAM, 0);
-    if(socket_desc == -1) handle_error("server socket error");
     if (DEBUG) fprintf(stderr, "Socket created...\n");
 
     /* We enable SO_REUSEADDR to quickly restart our server after a crash:
-     * for more details, read about the TIME_WAIT state in the TCP protocol 
-    */
+     * for more details, read about the TIME_WAIT state in the TCP protocol */
     int reuseaddr_opt = 1;
-    
-    if (setsockopt(socket_desc, SOL_SOCKET, SO_REUSEADDR, &reuseaddr_opt, sizeof(reuseaddr_opt)) < 0) handle_error("Cannot set SO_REUSEADDR option");
+    ret = setsockopt(socket_desc, SOL_SOCKET, SO_REUSEADDR, &reuseaddr_opt, sizeof(reuseaddr_opt));
+    if (ret < 0)
+        handle_error("Cannot set SO_REUSEADDR option");
 
     /**
      *  TODO: set server address and bind it to the socket
@@ -152,12 +167,12 @@ int main(int argc, char* argv[]) {
      * - bind address to socket
      * - - attention to the bind method:
      * - - it requires as second field struct sockaddr* addr, but our address is a struct sockaddr_in, hence we must cast it (struct sockaddr*) &server_addr
-    */
-
-    server_addr.sin_addr.s_addr = INADDR_ANY;
+     */
     server_addr.sin_family = AF_INET;
+    server_addr.sin_addr.s_addr = INADDR_ANY;
     server_addr.sin_port = htons(SERVER_PORT);
-    if(bind(socket_desc, (struct sockaddr*) &server_addr, sockaddr_len) == -1) handle_error("bind server port\n");
+    ret = bind(socket_desc, (struct sockaddr*) &server_addr, sockaddr_len);
+    if(ret == -1) handle_error("Error while binding socket to address/port");
 
     if (DEBUG) fprintf(stderr, "Binded address to socket...\n");
 
@@ -166,41 +181,36 @@ int main(int argc, char* argv[]) {
      *
      * Suggestions:
      * - set the number of pending connections to as MAX_CONN_QUEUE
-    */
-
-    if(listen(socket_desc, MAX_CONN_QUEUE) == -1) handle_error("listen server port");
+     */
+    ret = listen(socket_desc, MAX_CONN_QUEUE);
+    if(ret == -1) handle_error("Error while listening for connection to the socket");
 
     if (DEBUG) fprintf(stderr, "Socket is listening...\n");
 
     // loop to handle incoming connections (sequentially)
     while (1) {
-        /*
-         TODO: accept an incoming connection
-        
-         Suggestions:
-         - the descriptor returned by accept() should be stored in the
-           client_desc variable (declared at the beginning of main)
-         - pass the address of the client_addr variable (casting it to
-           struct sockaddr* is recommended) as second argument to
-           accept()
-         - the size of the client_addr structure has been stored in
-           the sockaddr_len variable, so simply use it! (note that as
-           the variable is an int, casting its address to socklen_t*
-           is recommended)
-         - check the return value of accept() for errors!
-        */
-
-        client_desc = accept(socket_desc, (struct sockaddr *) &client_addr, (socklen_t*) sockaddr_len);
-        if(client_desc == -1) {
-            fprintf(stderr, "echo message error");
-            continue;
-        }
-
+        /**
+         * TODO: accept an incoming connection
+         *
+         * Suggestions:
+         * - the descriptor returned by accept() should be stored in the
+         *   client_desc variable (declared at the beginning of main)
+         * - pass the address of the client_addr variable (casting it to
+         *   struct sockaddr* is recommended) as second argument to
+         *   accept()
+         * - the size of the client_addr structure has been stored in
+         *   the sockaddr_len variable, so simply use it! (note that as
+         *   the variable is an int, casting its address to socklen_t*
+         *   is recommended)
+         * - check the return value of accept() for errors!
+         */
+        client_desc = accept(socket_desc, (struct sockaddr*) &client_addr, (socklen_t*) &sockaddr_len);
+        if(client_desc == -1) handle_error("Error while accepting connection from client");
         if (DEBUG) fprintf(stderr, "Incoming connection accepted...\n");
 
         connection_handler(client_desc);
 
-        if (DEBUG) fprintf(stderr, "Done!\n");
+        if (DEBUG) fprintf(stderr, "Done!\n\n\n\n\n");
     }
 
     exit(EXIT_SUCCESS); // this will never be executed
