@@ -122,8 +122,8 @@ int main(int argc, char *argv[])
      * - gestire eventuali errori, terminando l'applicazione
      */	
     ret = close(sk_fd);
-        if(ret == -1)
-            handle_error("Error while closing server socket fd");
+    if(ret == -1)
+        handle_error("Error while closing server socket fd");
 
     /***/
 
